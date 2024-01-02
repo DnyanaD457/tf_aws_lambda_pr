@@ -139,3 +139,4 @@ resource "aws_s3_bucket_notification" "aws-lambda-trigger" {
 
   }
 }
+
