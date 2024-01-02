@@ -3,6 +3,14 @@ provider "aws" {
   profile = var.profile
 }
 
+data "aws_vpc" "default" {
+  id = "vpc-b5e100de"
+}
+
+data "aws_subnet" "default-subnet-1" {
+  id = "subnet-396c6251"
+}
+
 resource "aws_iam_role" "lambda_role" {
   name               = "my-lambda-role-tf"
   assume_role_policy = <<EOF
@@ -139,3 +147,53 @@ resource "aws_s3_bucket_notification" "aws-lambda-trigger" {
 
   }
 }
+
+locals {
+  ingress_rules = [{
+    port = 443
+    description = "https port is opened"
+  },
+  {
+    port = 80
+    description = "http port is opened"
+  },
+  {
+     port = 0
+     description = "it will allow all traffic"
+     protocol = "-1"
+  }]
+}
+
+
+resource "aws_security_group" "aws_lambda_sg" {
+  name = "tf-lambda-sg"
+  vpc_id = data.aws_vpc.default.id
+
+  egress = [{
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+    self = false
+  }]
+
+  dynamic "ingress" {
+    for_each = local.ingress_rules
+
+    content {
+      description = ingress.value.description
+      from_port = ingress.value.from_port
+      to_port = ingress.value.to_port
+      protocol = "tcp"
+      #protocol = ingress.value.protocol
+      cidr_blocks      = ["0.0.0.0/0"]
+    }
+  }
+
+  tags = {
+    Name = "allow_http_https"
+  }
+}
+
+
